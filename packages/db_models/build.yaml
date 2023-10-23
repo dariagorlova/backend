@@ -1,0 +1,7 @@
+targets:
+  $default:
+    builders:
+      stormberry:
+        generate_for:
+          # path of model classes
+          - lib/src/models/user/user.dart
