@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:backend/constants.dart';
 import 'package:backend/extensions/string_hash_extension.dart';
 import 'package:backend/utils/output_response.dart';
 import 'package:backend/utils/request_method.dart';
@@ -19,7 +20,7 @@ Future<Response> _signUp(RequestContext context) async{
   try { // if some shit as "user" was sent to this entryPoint
     inUser = shared.User.fromJson(body);
   }catch (e){
-    return createResponse(HttpStatus.badRequest, 'failed', 'Invalid syntax in request');
+    return createResponse(HttpStatus.badRequest, StatusMessage.statusFailed, 'Invalid syntax in request');
   }
 
   final database = context.read<Database>();
@@ -27,7 +28,7 @@ Future<Response> _signUp(RequestContext context) async{
 
   for (final u in users) {
     if (u.email == inUser.email) {
-      return createResponse(HttpStatus.badRequest, 'failed', 'email ${inUser.email} is already taken!');
+      return createResponse(HttpStatus.badRequest, StatusMessage.statusFailed, 'email ${inUser.email} is already taken!');
     }
   }
 
@@ -48,5 +49,5 @@ Future<Response> _signUp(RequestContext context) async{
   //TODO: send verification email
   print('verify/${inUser.emailVerificationLink}');
 
-  return createResponse(HttpStatus.created, 'success', 'User was created', inUser.toJson(),);// logic here
+  return createResponse(HttpStatus.created, StatusMessage.statusSuccess, 'User was created', inUser.toJson(),);// logic here
 }

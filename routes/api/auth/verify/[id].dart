@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:backend/constants.dart';
 import 'package:backend/utils/output_response.dart';
 import 'package:backend/utils/request_method.dart';
 import 'package:dart_frog/dart_frog.dart';
@@ -19,7 +20,7 @@ Future<Response> _verification(RequestContext context, String id) async {
   // better to use database.users.query(), but i don't know how
   final rawResult = await database.query("SELECT * FROM users WHERE email_verification_link = '$id'");
   if (rawResult.length != 1){
-    return createResponse(HttpStatus.badRequest, 'failed', 'User not found');
+    return createResponse(HttpStatus.badRequest, StatusMessage.statusFailed, 'User not found');
   }
 
   final userId = rawResult.first.toColumnMap()['id'] as int;
@@ -30,5 +31,5 @@ Future<Response> _verification(RequestContext context, String id) async {
   );
   await database.users.updateOne(updateRequest);
   //TODO: mb we have to return a full user for autologin if needed
-  return createResponse(HttpStatus.ok, 'success', 'Email verified');
+  return createResponse(HttpStatus.ok, StatusMessage.statusSuccess, 'Email verified');
 }

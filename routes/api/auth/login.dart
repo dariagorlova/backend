@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:backend/constants.dart';
 import 'package:backend/extensions/string_hash_extension.dart';
 import 'package:backend/repository/session/session_repository.dart';
 import 'package:backend/utils/output_response.dart';
@@ -21,10 +22,10 @@ Future<Response> _login(RequestContext context) async {
   final body = await context.request.json() as Map<String, dynamic>;
   shared.User? inUser;
 
-  try { // if some shit as "user" was sent to this entryPoint
+  try { // if some dirt as "user" was sent to this entryPoint
     inUser = shared.User.fromJson(body);
   } catch (e) {
-    return createResponse(HttpStatus.badRequest, 'failed', 'Invalid syntax in request');
+    return createResponse(HttpStatus.badRequest, StatusMessage.statusFailed, 'Invalid syntax in request');
   }
   //
   final inPassword = inUser.password?.hashValue;
@@ -32,7 +33,7 @@ Future<Response> _login(RequestContext context) async {
   // better to use database.users.query(), but i don't know how
   final rawResult = await database.query("SELECT * FROM users WHERE email = '${inUser.email}' AND password = '$inPassword'");
   if (rawResult.length != 1){
-    return createResponse(HttpStatus.badRequest, 'failed', 'User not found');
+    return createResponse(HttpStatus.badRequest, StatusMessage.statusFailed, 'User not found');
   }
 
   // fill inUser with database data
@@ -55,16 +56,17 @@ Future<Response> _login(RequestContext context) async {
     final updateRequest = db.UserUpdateRequest(
       id: inUser.id,
       token: generatedToken,
+      deviceId: inUser.deviceId,
     );
     await database.users.updateOne(updateRequest);
     // update token in realtime cache
-    final session = context.read<SessionRepository>()
+    context.read<SessionRepository>()
       ..addSession(inUser.id, generatedToken);
 
     inUser = inUser.copyWith(token: generatedToken);
 
-    return createResponse(HttpStatus.ok, 'success', 'User was found', inUser.toJson());
+    return createResponse(HttpStatus.ok, StatusMessage.statusSuccess, 'User was found', inUser.toJson());
   }
   /// frontend must show an alert dialog. check statusCode==226
-  return createResponse(HttpStatus.imUsed, 'failed', 'Email must be verified');
+  return createResponse(HttpStatus.imUsed, StatusMessage.statusFailed, 'Email must be verified');
 }
