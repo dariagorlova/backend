@@ -18,7 +18,7 @@ Future<Response> onRequest(RequestContext context) async {
 /// input:
 /// token in header and empty body
 Future<Response> _logout(RequestContext context) async {
-  final token = context.request.headers['token']!;
+  final token = context.request.headers[tokenHeaderName]!;
   final session = context.read<SessionRepository>();
   final id = session.getUserIdForToken(token);
   final database = context.read<Database>();

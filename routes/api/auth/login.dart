@@ -12,61 +12,59 @@ import 'package:stormberry/stormberry.dart';
 
 Future<Response> onRequest(RequestContext context) async {
   return requestMethod(context.request, HttpMethod.get) ??
-      //authHeader(context) ??
       await _login(context);
 }
 
-/// input:
-/// shared.User(email: 'user@email.com', password: 'password', deviceId: 'UUID of device')
+/// input: {
+/// "email": "user@email.com",
+/// "password": "password",
+/// "deviceId": "UUID of device"
+/// }
 Future<Response> _login(RequestContext context) async {
-  final body = await context.request.json() as Map<String, dynamic>;
-  shared.User? inUser;
+  try {
+    final body = await context.request.json() as Map<String, dynamic>;
+    final inPassword = (body['password'] as String).hashValue;
+    final inEmail = body['email'] as String;
+    final inDeviceId = body['device_id'] as String;
 
-  try { // if some dirt as "user" was sent to this entryPoint
-    inUser = shared.User.fromJson(body);
-  } catch (e) {
+    final database = context.read<Database>();
+    final queryUsers = await database.users.queryUsers(
+      QueryParams(
+        where: 'email=@email AND password=@password',
+        values: {'email': inEmail, 'password': inPassword},
+      ),
+    );
+
+    if (queryUsers.length != 1) {
+      return createResponse(HttpStatus.badRequest, StatusMessage.statusFailed, 'User not found');
+    }
+
+    var foundUser = shared.User.fromUserView(queryUsers.first);
+    if (foundUser.emailVerified ?? false) {
+      // update token in 'users' table
+      final generatedToken = '${foundUser.email}|${foundUser
+          .deviceId}|${foundUser.password}'.baseToken;
+      final updateRequest = db.UserUpdateRequest(
+        id: foundUser.id,
+        token: generatedToken,
+        deviceId: inDeviceId,
+      );
+      await database.users.updateOne(updateRequest);
+      // update token in realtime cache
+      context.read<SessionRepository>().addSession(
+          foundUser.id, generatedToken);
+
+      foundUser =
+          foundUser.copyWith(token: generatedToken, deviceId: inDeviceId);
+      return createResponse(
+          HttpStatus.ok, StatusMessage.statusSuccess, 'User was found',
+          foundUser.toJson());
+    }
+
+    /// frontend must show an alert dialog. check statusCode==226
+    return createResponse(HttpStatus.imUsed, StatusMessage.statusFailed,
+        'Email must be verified');
+  } catch (_){
     return createResponse(HttpStatus.badRequest, StatusMessage.statusFailed, 'Invalid syntax in request');
   }
-  //
-  final inPassword = inUser.password?.hashValue;
-  final database = context.read<Database>();
-  // better to use database.users.query(), but i don't know how
-  final rawResult = await database.query("SELECT * FROM users WHERE email = '${inUser.email}' AND password = '$inPassword'");
-  if (rawResult.length != 1){
-    return createResponse(HttpStatus.badRequest, StatusMessage.statusFailed, 'User not found');
-  }
-
-  // fill inUser with database data
-  inUser = inUser.copyWith(
-    id: rawResult.first.toColumnMap()['id'] as int,
-    userName: rawResult.first.toColumnMap()['user_name'] as String,
-    email: rawResult.first.toColumnMap()['email'] as String,
-    deviceId: rawResult.first.toColumnMap()['device_id'] as String,
-    avatarUrl: rawResult.first.toColumnMap()['avatar_url'] as String?,
-    password: rawResult.first.toColumnMap()['password'] as String?,
-    emailVerified: rawResult.first.toColumnMap()['email_verified'] as bool?,
-    emailVerificationLink: rawResult.first.toColumnMap()['email_verification_link'] as String?,
-    token: rawResult.first.toColumnMap()['token'] as String?,
-    referalCode: rawResult.first.toColumnMap()['referal_code'] as String?,
-  );
-
-  if (inUser.emailVerified ?? false){
-    // update token in 'users' table
-    final generatedToken = '${inUser.email}|${inUser.deviceId}|${inUser.password}'.baseToken;
-    final updateRequest = db.UserUpdateRequest(
-      id: inUser.id,
-      token: generatedToken,
-      deviceId: inUser.deviceId,
-    );
-    await database.users.updateOne(updateRequest);
-    // update token in realtime cache
-    context.read<SessionRepository>()
-      ..addSession(inUser.id, generatedToken);
-
-    inUser = inUser.copyWith(token: generatedToken);
-
-    return createResponse(HttpStatus.ok, StatusMessage.statusSuccess, 'User was found', inUser.toJson());
-  }
-  /// frontend must show an alert dialog. check statusCode==226
-  return createResponse(HttpStatus.imUsed, StatusMessage.statusFailed, 'Email must be verified');
 }

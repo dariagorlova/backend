@@ -17,15 +17,19 @@ Future<Response> onRequest(
 
 Future<Response> _verification(RequestContext context, String id) async {
   final database = context.read<Database>();
-  // better to use database.users.query(), but i don't know how
-  final rawResult = await database.query("SELECT * FROM users WHERE email_verification_link = '$id'");
-  if (rawResult.length != 1){
+  final queryUsers = await database.users.queryUsers(
+    QueryParams(
+      where: 'email_verification_link=@email_verification_link',
+      values: {'email_verification_link': id},
+    ),
+  );
+
+  if (queryUsers.length != 1) {
     return createResponse(HttpStatus.badRequest, StatusMessage.statusFailed, 'User not found');
   }
 
-  final userId = rawResult.first.toColumnMap()['id'] as int;
   final updateRequest = db.UserUpdateRequest(
-    id: userId,
+    id: queryUsers.first.id,
     emailVerified: true,
     emailVerificationLink: '',
   );
