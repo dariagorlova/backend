@@ -6,7 +6,6 @@ import 'package:backend/utils/output_response.dart';
 import 'package:backend/utils/request_method.dart';
 import 'package:dart_frog/dart_frog.dart';
 import 'package:db_models/db_models.dart' as db;
-import 'package:email_sender/email_sender.dart';
 import 'package:stormberry/stormberry.dart';
 
 Future<Response> onRequest(RequestContext context) async {
@@ -56,17 +55,17 @@ Future<Response> _signUp(RequestContext context) async{
 
     var outMessage = 'User was created';
     //->send verification email
-    final emailSender = EmailSender();
-    final res = await emailSender.sendMessage(
-      inEmail,
-      'Email verification',
-      'Please confirm your email',
-      'To confirm your email visit: http://localhost:8080/api/auth/verify/${inEmail.hashValue}',
-    );
-
-    if (res['message'] == 'emailSendSuccess') {
-      outMessage = 'Confirmation email was sent';
-    }
+    // final emailSender = EmailSender();
+    // final res = await emailSender.sendMessage(
+    //   inEmail,
+    //   'Email verification',
+    //   'Please confirm your email',
+    //   'To confirm your email visit: http://localhost:8080/api/auth/verify/${inEmail.hashValue}',
+    // );
+    //
+    // if (res['message'] == 'emailSendSuccess') {
+    //   outMessage = 'Confirmation email was sent';
+    // }
     //<-
     return createResponse(HttpStatus.created, StatusMessage.statusSuccess, outMessage);
   }catch(_){

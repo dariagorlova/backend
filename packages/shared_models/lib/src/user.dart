@@ -35,5 +35,18 @@ class User with _$User implements db.UserView{
     token:user.token,
     referalCode: user.referalCode,
   );
+  
+  factory User.empty()=>User(
+    id: -1,
+    userName: '',
+    email: '',
+    deviceId: '',
+    avatarUrl: '',
+    password: '',
+    emailVerified: false,
+    emailVerificationLink: '',
+    token: '',
+    referalCode: '',
+  );
 }
 

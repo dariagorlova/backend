@@ -18,7 +18,7 @@ Future<Response> onRequest(RequestContext context) async {
 /// input: {
 /// "email": "user@email.com",
 /// "password": "password",
-/// "deviceId": "UUID of device"
+/// "device_id": "UUID of device"
 /// }
 Future<Response> _login(RequestContext context) async {
   try {

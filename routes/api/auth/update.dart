@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:backend/constants.dart';
-import 'package:backend/extensions/string_hash_extension.dart';
 import 'package:backend/repository/session/session_repository.dart';
 import 'package:backend/utils/auth_header.dart';
 import 'package:backend/utils/output_response.dart';
@@ -25,27 +24,28 @@ Future<Response> _updateUser(RequestContext context) async {
   final dbUser = await database.users.queryUser(id!);
   if (dbUser != null && dbUser.token == token) {
     final body = await context.request.json() as Map<String, dynamic>;
-    shared.User? inUser;
-    try { // if some shit as "user" was sent to this entryPoint
-      inUser = shared.User.fromJson(body);
-    }catch (e){
-      return createResponse(HttpStatus.badRequest, StatusMessage.statusFailed, 'Invalid syntax in request');
-    }
 
-    final request = db.UserUpdateRequest(
-      id: dbUser.id,
-      userName: inUser.userName,
-      password: inUser.password?.hashValue,
-      // maybe something more
-    );
-    await database.users.updateOne(request);
-    inUser = inUser.copyWith(
-      id: dbUser.id,
-      password: inUser.password?.hashValue,
-      avatarUrl: dbUser.avatarUrl,
-    );
-    return createResponse(HttpStatus.created, StatusMessage.statusSuccess, 'User was updated', inUser.toJson());
-  }
+    final newname = body['user_name'] as String?;
+    if (newname!= null && newname.isNotEmpty) {
+      final request = db.UserUpdateRequest(
+        id: dbUser.id,
+        userName: newname,
+
+        // maybe something more
+      );
+      await database.users.updateOne(request);
+
+      var outUser = shared.User.fromUserView(dbUser);
+      outUser = outUser.copyWith(
+        userName: newname,
+      );
+      return createResponse(
+          HttpStatus.created, StatusMessage.statusSuccess, 'User was updated',
+          outUser.toJson());
+      } else {
+      return createResponse(HttpStatus.upgradeRequired, StatusMessage.statusFailed, 'User not found');
+    }
+    }
   else {
     /// frontend must start from login screen. check statusCode == 426,
     return createResponse(HttpStatus.upgradeRequired, StatusMessage.statusFailed, 'Token is expired. You have to login');
